@@ -1,17 +1,27 @@
+drop trigger if exists on_auth_user_created_profile on auth.users;
+drop function if exists public.create_operator_profile();
+drop table if exists public.profiles cascade;
+
 alter table public.incidents
-  alter column created_by drop not null;
+  drop column if exists created_by;
+
+alter table public.incidents enable row level security;
+alter table public.dispatch_config enable row level security;
 
 drop policy if exists "Authenticated operators read incidents" on public.incidents;
+drop policy if exists "Public read incidents" on public.incidents;
 create policy "Public read incidents"
   on public.incidents for select to anon, authenticated
   using (true);
 
 drop policy if exists "Authenticated operators read dispatch config" on public.dispatch_config;
+drop policy if exists "Public read dispatch config" on public.dispatch_config;
 create policy "Public read dispatch config"
   on public.dispatch_config for select to anon, authenticated
   using (true);
 
 drop policy if exists "Supervisors update dispatch config" on public.dispatch_config;
+drop policy if exists "Public update dispatch config" on public.dispatch_config;
 create policy "Public update dispatch config"
   on public.dispatch_config for update to anon, authenticated
   using (true)
@@ -84,8 +94,8 @@ begin
   );
 
   return query
-  insert into public.incidents (id, status, deadline_at, data, created_by, created_at, updated_at)
-  values (p_id, 'AWAITING', v_deadline, v_data, auth.uid(), v_now, v_now)
+  insert into public.incidents (id, status, deadline_at, data, created_at, updated_at)
+  values (p_id, 'AWAITING', v_deadline, v_data, v_now, v_now)
   returning *;
 end;
 $$;

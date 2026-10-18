@@ -201,7 +201,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 ```
 
-Apply both files in `supabase/migrations/` in the Supabase SQL Editor, in filename order. The second migration enables anonymous read/write access for the demo. The publishable key is used for anonymous database requests; never use a service-role key in the app.
+Apply both files in `supabase/migrations/` in filename order. The second migration removes the old operator profiles and auth trigger, then enables anonymous read/write access for the demo. The publishable key is used for anonymous database requests; never use a service-role key in the app.
 
 > **Security warning:** The dashboard, incidents, responder details, and dispatch configuration are publicly accessible and writable. Anyone can read or modify them. This mode is only suitable for a throwaway demo with non-sensitive data; do not connect it to real operators, emergency dispatch, or production incident data.
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertTriangle, Map, Camera, Settings, LogOut, Flame } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, Map, Camera, Settings, Flame } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const Sidebar: React.FC = () => {
-  const { logout, incidents, operator } = useApp();
+  const { incidents } = useApp();
   const awaitingCount = incidents.filter((i) => i.status === 'AWAITING' || i.status === 'DETECTED').length;
 
   // Requirement A.3: Removed About / Pitch tab
@@ -14,9 +14,7 @@ export const Sidebar: React.FC = () => {
     { path: '/incidents', label: 'Incidents', icon: AlertTriangle, badge: null },
     { path: '/map', label: 'Command Map', icon: Map, badge: null },
     { path: '/cameras', label: 'Cameras', icon: Camera, badge: null },
-    ...(operator.role === 'supervisor' || operator.role === 'admin'
-      ? [{ path: '/settings', label: 'Settings', icon: Settings, badge: null }]
-      : []),
+    { path: '/settings', label: 'Settings', icon: Settings, badge: null },
   ];
 
   return (
@@ -59,16 +57,6 @@ export const Sidebar: React.FC = () => {
         })}
       </div>
 
-      {/* Footer Exit Session Button - Sticky to bottom of viewport/screen */}
-      <div className="p-4 border-t border-slate-200 mt-auto sticky bottom-0 bg-white z-10 shrink-0">
-        <button
-          onClick={() => { void logout(); }}
-          className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-lg text-xs font-mono text-slate-600 hover:text-red-600 hover:bg-red-50 transition-calm border border-slate-200 hover:border-red-200 cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Exit Session</span>
-        </button>
-      </div>
     </aside>
   );
 };

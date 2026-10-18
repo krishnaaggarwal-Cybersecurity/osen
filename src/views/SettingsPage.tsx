@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Settings, Phone, Save, CheckCircle2, Sliders } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
-  const { systemConfig, updateConfig, phoneOverride, operator } = useApp();
+  const { systemConfig, updateConfig, phoneOverride } = useApp();
 
   const [escalationSeconds, setEscalationSeconds] = useState<number>(systemConfig.escalationSeconds);
   const [confidenceThreshold, setConfidenceThreshold] = useState<number>(systemConfig.confidenceThreshold * 100);
@@ -41,17 +41,6 @@ export const SettingsPage: React.FC = () => {
       setSaveError(error instanceof Error ? error.message : 'Unable to save configuration.');
     }
   };
-
-  if (operator.role !== 'supervisor' && operator.role !== 'admin') {
-    return (
-      <div className="p-8 max-w-3xl mx-auto">
-        <div className="bg-white border border-slate-200 rounded-xl p-6">
-          <h1 className="font-bold text-slate-900">Supervisor access required</h1>
-          <p className="text-sm text-slate-500 mt-2">Dispatch configuration can only be changed by a supervisor or administrator.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-[1200px] mx-auto font-sans">

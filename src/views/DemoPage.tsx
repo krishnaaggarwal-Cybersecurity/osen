@@ -9,7 +9,6 @@ export const DemoPage: React.FC = () => {
     setActiveClip,
     phoneOverride,
     setPhoneOverride,
-    operator,
     maskedPhone,
     triggerCollision,
     eventLogs,
@@ -99,37 +98,33 @@ export const DemoPage: React.FC = () => {
               </span>
             </div>
 
-            {operator.role === 'supervisor' || operator.role === 'admin' ? (
-              <form onSubmit={handleSavePhone} className="space-y-3">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={phoneInput}
-                    onChange={(e) => {
-                      setPhoneInput(e.target.value);
-                      setPhoneSaved(false);
-                    }}
-                    placeholder="+91 9876543210"
-                    className="flex-1 bg-slate-50 border border-slate-200 focus:border-[#0B7FF5] rounded-lg px-4 py-2.5 text-xs text-slate-900 font-mono focus:outline-none transition-calm font-medium"
-                  />
-                  <button
-                    type="submit"
-                    className={`px-4 py-2.5 rounded-lg text-xs font-mono font-semibold transition-calm ${
-                      phoneSaved
-                        ? 'bg-slate-100 text-slate-500 border border-slate-200'
-                        : 'bg-[#0B7FF5] text-white hover:bg-blue-600'
-                    }`}
-                  >
-                    {phoneSaved ? 'Saved' : 'Save Phone'}
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  E.164 format. This value is saved in Supabase; voice-call dispatch requires a configured provider integration.
-                </p>
-              </form>
-            ) : (
-              <p className="text-[11px] text-slate-500">Only supervisors can change the responder number.</p>
-            )}
+            <form onSubmit={handleSavePhone} className="space-y-3">
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={phoneInput}
+                  onChange={(e) => {
+                    setPhoneInput(e.target.value);
+                    setPhoneSaved(false);
+                  }}
+                  placeholder="+91 9876543210"
+                  className="flex-1 bg-slate-50 border border-slate-200 focus:border-[#0B7FF5] rounded-lg px-4 py-2.5 text-xs text-slate-900 font-mono focus:outline-none transition-calm font-medium"
+                />
+                <button
+                  type="submit"
+                  className={`px-4 py-2.5 rounded-lg text-xs font-mono font-semibold transition-calm ${
+                    phoneSaved
+                      ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                      : 'bg-[#0B7FF5] text-white hover:bg-blue-600'
+                  }`}
+                >
+                  {phoneSaved ? 'Saved' : 'Save Phone'}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                E.164 format. This value is saved in Supabase; voice-call dispatch requires a configured provider integration.
+              </p>
+            </form>
           </div>
 
           {/* Pre-recorded MP4 Clips */}

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const { operator, incidents, triggerCollision, openEscalationModal } = useApp();
+  const { incidents, triggerCollision, openEscalationModal } = useApp();
 
   // Page title
   useEffect(() => {
@@ -43,7 +43,7 @@ export const DashboardPage: React.FC = () => {
           <p className="text-sm md:text-base text-slate-700 mt-2 flex items-center space-x-2 font-mono font-medium">
             <MapPin className="w-4 h-4 text-[#0B7FF5] shrink-0" />
             <span className="text-slate-500 font-normal">Assigned Sector:</span>
-            <span className="font-bold text-slate-900">{operator.assignedSector}</span>
+            <span className="font-bold text-slate-900">All sectors</span>
           </p>
         </div>
       </div>

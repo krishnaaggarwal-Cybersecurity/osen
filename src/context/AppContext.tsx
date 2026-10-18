@@ -6,14 +6,6 @@ import type { Incident, DemoClip, EventLogEntry, SystemHealth } from '../types';
 import { INITIAL_DEMO_CLIPS, ACCIDENT_PRESETS, CAMERA_LIST, type CameraInfo } from '../lib/mockData';
 import { soundManager } from '../lib/audio';
 
-export interface OperatorProfile {
-  id: string;
-  name: string;
-  role: 'operator' | 'supervisor' | 'admin';
-  assignedSector: string;
-  email?: string;
-}
-
 type DispatchConfig = {
   escalationSeconds: number;
   confidenceThreshold: number;
@@ -25,14 +17,8 @@ type DispatchConfig = {
 type IncidentAction = 'dismiss' | 'acknowledge' | 'dispatch' | 'auto-escalate';
 
 interface AppContextType {
-  isAuthenticated: boolean;
-  authLoading: boolean;
   operationError: string | null;
   clearOperationError: () => void;
-  operator: OperatorProfile;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signUp: (displayName: string, email: string, password: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  logout: () => Promise<void>;
   incidents: Incident[];
   activeEscalationIncident: Incident | null;
   isEscalationModalOpen: boolean;
@@ -59,13 +45,6 @@ interface AppContextType {
   isAudioMuted: boolean;
   toggleAudioMute: () => boolean;
 }
-
-const DEFAULT_OPERATOR: OperatorProfile = {
-  id: '',
-  name: 'Operator',
-  role: 'operator',
-  assignedSector: 'Unassigned',
-};
 
 const DEFAULT_CONFIG: DispatchConfig = {
   escalationSeconds: 15,
@@ -100,10 +79,7 @@ async function apiRequest<T>(url: string, init?: RequestInit): Promise<ApiRespon
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
   const [operationError, setOperationError] = useState<string | null>(null);
-  const [operator, setOperator] = useState<OperatorProfile>(DEFAULT_OPERATOR);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [cameras] = useState<CameraInfo[]>(CAMERA_LIST);
   const [selectedCameraId, setSelectedCameraId] = useState('CAM-01');
@@ -133,11 +109,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setEventLogs((previous) => [entry, ...previous.slice(0, 49)]);
   }, []);
 
-  const applyOperator = useCallback((profile: OperatorProfile) => {
-    setOperator(profile);
-    setIsAuthenticated(true);
-  }, []);
-
   const refreshIncidents = useCallback(async () => {
     const result = await apiRequest<{ incidents: Incident[] }>('/api/incidents');
     if (result.data) {
@@ -147,11 +118,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         current ? result.data?.incidents.find((incident) => incident.id === current.id) ?? current : null,
       );
       return result.data.incidents;
-    }
-    if (result.error === 'Authentication required.') {
-      setIsAuthenticated(false);
-      setOperator(DEFAULT_OPERATOR);
-      return null;
     }
     if (result.error) {
       addEventLog('api', `Incident refresh failed: ${result.error}`);
@@ -163,11 +129,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const refreshConfig = useCallback(async () => {
     const result = await apiRequest<{ config: DispatchConfig }>('/api/config');
     if (!result.data) {
-      if (result.error === 'Authentication required.') {
-        setIsAuthenticated(false);
-        setOperator(DEFAULT_OPERATOR);
-        return;
-      }
       if (result.error) {
         addEventLog('api', `Configuration load failed: ${result.error}`);
         setOperationError(result.error);
@@ -179,52 +140,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPhoneOverrideState(result.data.config.phoneOverride);
   }, [addEventLog]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await apiRequest<{ operator: OperatorProfile }>('/api/auth', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    if (!result.data) return { success: false, error: result.error || 'Sign-in failed.' };
-    applyOperator(result.data.operator);
-    addEventLog('action', `Operator ${result.data.operator.id} signed in.`);
-    await Promise.all([refreshIncidents(), refreshConfig()]);
-    return { success: true };
-  }, [addEventLog, applyOperator, refreshConfig, refreshIncidents]);
-
-  const signUp = useCallback(async (displayName: string, email: string, password: string) => {
-    const result = await apiRequest<{ created: boolean; message: string }>('/api/auth', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'sign-up', displayName, email, password }),
-    });
-    if (!result.data) return { success: false, error: result.error || 'Could not create account.' };
-    return { success: true, message: result.data.message };
-  }, []);
-
-  const logout = useCallback(async () => {
-    const result = await apiRequest('/api/auth', { method: 'DELETE' });
-    if (result.error) addEventLog('api', `Sign-out warning: ${result.error}`);
-    setIsAuthenticated(false);
-    setOperator(DEFAULT_OPERATOR);
-    setIncidents([]);
-    setActiveEscalationIncident(null);
-    setIsEscalationModalOpen(false);
-  }, [addEventLog]);
-
   useEffect(() => {
-    let active = true;
-    const restoreSession = async () => {
-      const result = await apiRequest<{ authenticated: boolean; operator?: OperatorProfile }>('/api/auth');
-      if (active && result.data?.authenticated && result.data.operator) {
-        applyOperator(result.data.operator);
-        await Promise.all([refreshIncidents(), refreshConfig()]);
-      }
-      if (active) setAuthLoading(false);
-    };
-    void restoreSession();
-    return () => {
-      active = false;
-    };
-  }, [applyOperator, refreshConfig, refreshIncidents]);
+    void Promise.all([refreshIncidents(), refreshConfig()]);
+  }, [refreshConfig, refreshIncidents]);
 
   const mutateIncident = useCallback(async (id: string, action: IncidentAction, responderType?: string) => {
     const result = await apiRequest<{ incident: Incident }>(`/api/incidents/${encodeURIComponent(id)}`, {
@@ -312,7 +230,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [phoneOverride]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
     const refreshTimer = setInterval(() => {
       void refreshIncidents();
     }, 3000);
@@ -343,7 +260,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       clearInterval(refreshTimer);
       clearInterval(countdownTimer);
     };
-  }, [isAuthenticated, mutateIncident, refreshIncidents]);
+  }, [mutateIncident, refreshIncidents]);
 
   const openEscalationModal = (incident: Incident) => {
     setActiveEscalationIncident(incident);
@@ -375,14 +292,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider
       value={{
-        isAuthenticated,
-        authLoading,
         operationError,
         clearOperationError: () => setOperationError(null),
-        operator,
-        login,
-        signUp,
-        logout,
         incidents,
         activeEscalationIncident,
         isEscalationModalOpen,

@@ -3,7 +3,7 @@ import { Volume2, VolumeX, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const TopBar: React.FC = () => {
-  const { operator, isAudioMuted, toggleAudioMute } = useApp();
+  const { isAudioMuted, toggleAudioMute } = useApp();
   const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
@@ -50,8 +50,8 @@ export const TopBar: React.FC = () => {
             <User className="w-4 h-4" />
           </div>
           <div className="hidden xl:block text-left">
-            <div className="text-xs font-bold text-slate-900 leading-tight">{operator.id}</div>
-            <div className="text-[10px] text-slate-500">{operator.role}</div>
+            <div className="text-xs font-bold text-slate-900 leading-tight">Demo Console</div>
+            <div className="text-[10px] text-slate-500">Public access</div>
           </div>
         </div>
       </div>

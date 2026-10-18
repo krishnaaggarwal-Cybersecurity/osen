@@ -1,23 +1,12 @@
 import React from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { EscalationModal } from '../escalation/EscalationModal';
 import { useApp } from '../../context/AppContext';
 
 export const OpsLayout: React.FC = () => {
-  const { isAuthenticated, authLoading, operationError, clearOperationError } = useApp();
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center font-mono text-xs text-slate-500">
-        Verifying operator session...
-      </div>
-    );
-  }
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  const { operationError, clearOperationError } = useApp();
 
   return (
     <div className="h-screen bg-[#F8FAFC] flex flex-col text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-[#0B7FF5] overflow-hidden">

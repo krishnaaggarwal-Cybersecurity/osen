@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import type { Incident } from '../../../types';
 import { ACCIDENT_PRESETS } from '../../../lib/mockData';
-import { getAuthenticatedOperator, hasSameOrigin, supabaseRequest } from '../../../lib/supabase/server';
+import { hasSameOrigin, supabaseRequest } from '../../../lib/supabase/public';
 
 interface IncidentRow {
   id: string;
@@ -25,11 +25,7 @@ function presentIncident(row: IncidentRow): Incident {
 
 export async function GET() {
   try {
-    const operator = await getAuthenticatedOperator();
-    if (!operator) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-
     const rows = await supabaseRequest<IncidentRow[]>(
-      operator,
       'incidents?select=id,status,deadline_at,created_at,data&order=created_at.desc',
     );
     return NextResponse.json({ incidents: rows.map(presentIncident) });
@@ -42,8 +38,6 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     if (!hasSameOrigin(request)) return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
-    const operator = await getAuthenticatedOperator();
-    if (!operator) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
 
     const body = await request.json();
     const presetIndex = body.presetIndex;
@@ -82,7 +76,7 @@ export async function POST(request: Request) {
       ],
     };
 
-    const rows = await supabaseRequest<IncidentRow[]>(operator, 'rpc/create_incident', {
+    const rows = await supabaseRequest<IncidentRow[]>('rpc/create_incident', {
       method: 'POST',
       body: JSON.stringify({ p_id: id, p_data: incident }),
     });

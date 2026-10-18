@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Incident } from '../../../../types';
-import { getAuthenticatedOperator, hasSameOrigin, supabaseRequest } from '../../../../lib/supabase/server';
+import { hasSameOrigin, supabaseRequest } from '../../../../lib/supabase/public';
 
 interface IncidentRow {
   id: string;
@@ -23,8 +23,6 @@ function presentIncident(row: IncidentRow): Incident {
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     if (!hasSameOrigin(request)) return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
-    const operator = await getAuthenticatedOperator();
-    if (!operator) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
 
     const { id } = await context.params;
     const body = await request.json();
@@ -33,7 +31,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       return NextResponse.json({ error: 'Unsupported incident action.' }, { status: 400 });
     }
 
-    const rows = await supabaseRequest<IncidentRow[]>(operator, 'rpc/transition_incident', {
+    const rows = await supabaseRequest<IncidentRow[]>('rpc/transition_incident', {
       method: 'POST',
       body: JSON.stringify({
         p_id: id,

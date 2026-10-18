@@ -3,7 +3,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
-import { LoginPage } from './views/LoginPage';
 import { OpsLayout } from './components/layout/OpsLayout';
 import { DashboardPage } from './views/DashboardPage';
 import { DemoPage } from './views/DemoPage';
@@ -18,9 +17,6 @@ export const App: React.FC = () => {
     <AppProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* Authenticated Operator Route Shell */}
           <Route element={<OpsLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/demo" element={<DemoPage />} />

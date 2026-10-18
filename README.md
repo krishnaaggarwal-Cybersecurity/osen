@@ -31,7 +31,7 @@ The single greatest bottleneck determining survival is the **loss of the critica
 
 > **NetraGridAI closes the loop.** It turns computer vision into real-world emergency action by pairing real-time video detection with a human-in-the-loop 15-second verification modal, falling back to an autonomous bilingual (Hindi/English) telephony dispatch to 112 emergency services and 108 CATS ambulances.
 
-> **Repository status:** This repository currently contains the Next.js operator-console prototype, Supabase-backed operator sessions/configuration/incident records, and sample incident presets. The Python vision service, live WebSocket alerts, scheduled escalation worker, Twilio integration, and real emergency dispatch are not included or connected yet.
+> **Repository status:** This repository currently contains the Next.js public demo console, Supabase-backed configuration/incident records, and sample incident presets. Authentication is disabled, so anyone can view incidents and change configuration. Do not use it for real or sensitive incident data. The Python vision service, live WebSocket alerts, scheduled escalation worker, Twilio integration, and real emergency dispatch are not included or connected yet.
 
 ---
 
@@ -149,7 +149,7 @@ The NetraGridAI portal provides a dedicated operator console built for long shif
 
 | Route | Page | Purpose | Access |
 | :--- | :--- | :--- | :--- |
-| `/login` | **Operator Sign-in** | Secure authentication into ICCC network with sector assignment. | Public |
+| `/` | **Demo Console** | Public operator-console demonstration. | Public |
 | `/dashboard` | **Live Command Center** | Primary operator screen: live MJPEG feed, active incidents, mini-map, telemetry. | Operator |
 | `/demo` | **Stage Demo Console** | Deterministic hackathon stage stunt controls, phone override, and event logs. | Presenter / Judge |
 | `/incidents` | **Incident Audit Ledger** | Filterable history of all detected, acknowledged, and escalated events. | Operator |
@@ -165,11 +165,10 @@ The NetraGridAI portal provides a dedicated operator console built for long shif
 
 NetraGridAI includes a **Stage Demo Console** (`/demo`) that creates sample incidents from bundled camera presets:
 
-1. **Create an Account:** Use **Sign up** on `/login` with your name, email, and password. Confirm the email if confirmation is enabled.
-2. **Request Operator Access:** New accounts have the `pending` role. An administrator must grant `operator`, `supervisor`, or `admin` before sign-in can access the console.
-3. **Access Demo Console:** Navigate to `/demo` via the sidebar.
-4. **Trigger an Incident:** Click **Trigger Collision Alert Now**. The server stores the sample incident in Supabase and sets its response deadline from the persisted dispatch configuration.
-5. **Review the Incident:** A countdown is shown from the database deadline. Acknowledge, dismiss, or record a dispatch request before expiry.
+1. **Open the Console:** Visit the deployed site; no sign-in is required.
+2. **Access Demo Console:** Navigate to `/demo` via the sidebar.
+3. **Trigger an Incident:** Click **Trigger Collision Alert Now**. The server stores the sample incident in Supabase and sets its response deadline from the persisted dispatch configuration.
+4. **Review the Incident:** A countdown is shown from the database deadline. Acknowledge, dismiss, or record a dispatch request before expiry.
 
 > Demo incidents use bundled sample evidence. Expiry records an `AUTO-ESCALATED` state using a database-checked deadline; this repository does **not** yet run a background dispatch worker or place live Twilio/112 calls.
 
@@ -180,7 +179,7 @@ NetraGridAI includes a **Stage Demo Console** (`/demo`) that creates sample inci
 ### Prerequisites
 * **Node.js** (v20.9.0 or later)
 * **npm** or **pnpm**
-* A Supabase project with the SQL migration applied.
+* A Supabase project with both SQL migrations applied.
 
 ### 1. Clone & Install Dependencies
 
@@ -202,17 +201,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 ```
 
-Apply `supabase/migrations/20261018000000_operator_auth_and_incidents.sql` in the Supabase SQL Editor. Enable email sign-ups in Supabase Auth to use the in-app registration form and configure the allowed redirect URLs/email confirmation policy in the Supabase dashboard. New accounts receive a `pending` profile and cannot access incidents until an administrator approves them.
+Apply both files in `supabase/migrations/` in the Supabase SQL Editor, in filename order. The second migration enables anonymous read/write access for the demo. The publishable key is used for anonymous database requests; never use a service-role key in the app.
 
-Promote the first supervisor/admin from the SQL Editor (replace the email and sector):
-
-```sql
-update public.profiles
-set role = 'admin', assigned_sector = 'Sector 4 - Gurugram Express Corridor (NH-48)'
-where id = (select id from auth.users where email = 'admin@example.com');
-```
-
-The same statement can assign `operator` or `supervisor` roles. The account email address must be confirmed when confirmation is enabled. Sessions are stored in an HTTP-only, secure-in-production cookie and refreshed through Supabase Auth. The browser never receives a service-role key.
+> **Security warning:** The dashboard, incidents, responder details, and dispatch configuration are publicly accessible and writable. Anyone can read or modify them. This mode is only suitable for a throwaway demo with non-sensitive data; do not connect it to real operators, emergency dispatch, or production incident data.
 
 ### 3. Run the Development Server
 
@@ -231,9 +222,9 @@ npm start
 
 ---
 
-## 🔐 Supabase-Backed Operator APIs
+## 🌐 Public Supabase-Backed Demo APIs
 
-The current Next.js API routes use Supabase Auth and the authenticated user's JWT for database access. The SQL migration creates the `profiles`, `dispatch_config`, and `incidents` tables, enables row-level security, and exposes database functions for incident creation and state transitions. `PATCH /api/incidents/:id` is serialized in Postgres; repeating the same action returns the existing state, and every action is checked against the persisted deadline.
+Authentication has been removed from the UI and APIs. The first SQL migration creates the Supabase schema; the second enables anonymous access for reading incidents and configuration, updating configuration, and running incident workflows. `PATCH /api/incidents/:id` is serialized in Postgres; repeating the same action returns the existing state, and every action is checked against the persisted deadline.
 
 The dashboard polls persisted incidents while open and submits an escalation transition after the displayed deadline. The database validates the deadline, but a scheduled worker is still required to perform escalation while no operator browser is connected. There is no connected voice provider, so `AUTO-ESCALATED` and `DISPATCHED` are stored workflow states—not confirmation that an emergency call was placed.
 
@@ -241,8 +232,7 @@ The dashboard polls persisted incidents while open and submits an escalation tra
 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
-| `/api/auth` | `GET / POST / DELETE` | Restore, sign in, register, and sign out a Supabase Auth session. |
-| `/api/config` | `GET / PUT` | Read persisted dispatch configuration; supervisor/admin only may update it. |
+| `/api/config` | `GET / PUT` | Publicly read or update persisted dispatch configuration. |
 | `/api/incidents` | `GET / POST` | List incidents or create a sample incident with a deadline generated by the database. |
 | `/api/incidents/:id` | `PATCH` | Idempotent acknowledge, dismiss, dispatch-request, or due-escalation transition. |
 | `/api/cctv` | `GET` | List local sample CCTV files. |

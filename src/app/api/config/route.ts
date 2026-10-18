@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedOperator, hasSameOrigin, supabaseRequest } from '../../../lib/supabase/server';
+import { hasSameOrigin, supabaseRequest } from '../../../lib/supabase/public';
 
 interface DispatchConfig {
   escalation_seconds: number;
@@ -21,10 +21,7 @@ function toClientConfig(config: DispatchConfig) {
 
 export async function GET() {
   try {
-    const operator = await getAuthenticatedOperator();
-    if (!operator) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-
-    const [config] = await supabaseRequest<DispatchConfig[]>(operator, 'rpc/get_dispatch_config');
+    const [config] = await supabaseRequest<DispatchConfig[]>('rpc/get_dispatch_config');
     if (!config) throw new Error('Dispatch configuration is missing.');
     return NextResponse.json({ config: toClientConfig(config) });
   } catch (error) {
@@ -36,11 +33,6 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     if (!hasSameOrigin(request)) return NextResponse.json({ error: 'Invalid request origin.' }, { status: 403 });
-    const operator = await getAuthenticatedOperator();
-    if (!operator) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-    if (!['supervisor', 'admin'].includes(operator.profile.role)) {
-      return NextResponse.json({ error: 'Supervisor access is required.' }, { status: 403 });
-    }
 
     const body = await request.json();
     const update: Record<string, unknown> = {};
@@ -83,11 +75,11 @@ export async function PUT(request: Request) {
     }
     update.updated_at = new Date().toISOString();
 
-    await supabaseRequest<void>(operator, 'dispatch_config?id=eq.true', {
+    await supabaseRequest<void>('dispatch_config?id=eq.true', {
       method: 'PATCH',
       body: JSON.stringify(update),
     });
-    const [config] = await supabaseRequest<DispatchConfig[]>(operator, 'rpc/get_dispatch_config');
+    const [config] = await supabaseRequest<DispatchConfig[]>('rpc/get_dispatch_config');
     if (!config) throw new Error('Dispatch configuration update returned no row.');
     return NextResponse.json({ config: toClientConfig(config) });
   } catch (error) {

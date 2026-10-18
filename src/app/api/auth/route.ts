@@ -11,7 +11,7 @@ import {
 export async function GET() {
   try {
     const operator = await getAuthenticatedOperator();
-    if (!operator) return NextResponse.json({ authenticated: false }, { status: 401 });
+    if (!operator) return NextResponse.json({ authenticated: false });
     return NextResponse.json({ authenticated: true, operator: operatorResponse(operator) });
   } catch (error) {
     console.error('Failed to verify operator session:', error);
@@ -116,7 +116,13 @@ export async function POST(request: Request) {
     const operator = await getAuthenticatedOperator(storedSession);
     if (!operator) {
       await clearSupabaseSession();
-      return NextResponse.json({ error: 'No active operator profile exists for this account.' }, { status: 403 });
+      return NextResponse.json(
+        {
+          error:
+            'Your account is not approved for operator access yet. Ask an administrator to assign the operator, supervisor, or admin role to your Supabase profile.',
+        },
+        { status: 403 },
+      );
     }
     return NextResponse.json({ authenticated: true, operator: operatorResponse(operator) });
   } catch (error) {

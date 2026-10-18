@@ -33,10 +33,11 @@ export const LoginPage: React.FC = () => {
           setError(result.error || 'Could not create your account.');
         }
       } else {
-        if (await login(email, password)) {
+        const result = await login(email, password);
+        if (result.success) {
           navigate('/dashboard');
         } else {
-          setError('Sign-in failed. Check your email and password, and confirm an administrator has approved your account.');
+          setError(result.error || 'Sign-in failed. Check your email and password.');
         }
       }
     } finally {

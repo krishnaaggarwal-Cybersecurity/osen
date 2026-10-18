@@ -30,7 +30,7 @@ interface AppContextType {
   operationError: string | null;
   clearOperationError: () => void;
   operator: OperatorProfile;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (displayName: string, email: string, password: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   logout: () => Promise<void>;
   incidents: Incident[];
@@ -184,11 +184,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    if (!result.data) return false;
+    if (!result.data) return { success: false, error: result.error || 'Sign-in failed.' };
     applyOperator(result.data.operator);
     addEventLog('action', `Operator ${result.data.operator.id} signed in.`);
     await Promise.all([refreshIncidents(), refreshConfig()]);
-    return true;
+    return { success: true };
   }, [addEventLog, applyOperator, refreshConfig, refreshIncidents]);
 
   const signUp = useCallback(async (displayName: string, email: string, password: string) => {

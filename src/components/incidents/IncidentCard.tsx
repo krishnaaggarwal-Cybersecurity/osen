@@ -11,6 +11,8 @@ interface IncidentCardProps {
 export const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
   const navigate = useNavigate();
   const { openEscalationModal, dismissIncident, acknowledgeIncident, dispatchIncident } = useApp();
+  const isAwaiting = incident.status === 'AWAITING' || incident.status === 'DETECTED';
+  const canRequestDispatch = isAwaiting || incident.status === 'AUTO-ESCALATED';
 
   const getStatusBadge = () => {
     switch (incident.status) {
@@ -42,7 +44,7 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
         return (
           <span className="bg-emerald-600 text-white border border-emerald-700 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center space-x-1 shadow-xs">
             <PhoneCall className="w-3 h-3 text-white" />
-            <span>DISPATCHED</span>
+            <span>{incident.status === 'AUTO-ESCALATED' ? 'AUTO-ESCALATED' : 'DISPATCH REQUESTED'}</span>
           </span>
         );
       default:
@@ -105,7 +107,7 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
         {/* Button 3a: Dismiss */}
         <button
           onClick={() => dismissIncident(incident.id)}
-          disabled={incident.status === 'DISMISSED'}
+          disabled={!isAwaiting}
           className={`py-1.5 px-2 rounded-lg font-bold transition-calm text-center ${
             incident.status === 'DISMISSED'
               ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
@@ -119,7 +121,7 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
         {/* Button 3b: Acknowledge */}
         <button
           onClick={() => acknowledgeIncident(incident.id)}
-          disabled={incident.status === 'ACKNOWLEDGED'}
+          disabled={!isAwaiting}
           className={`py-1.5 px-2 rounded-lg font-bold transition-calm text-center ${
             incident.status === 'ACKNOWLEDGED'
               ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
@@ -133,10 +135,11 @@ export const IncidentCard: React.FC<IncidentCardProps> = ({ incident }) => {
         {/* Button 3c: Dispatch */}
         <button
           onClick={() => dispatchIncident(incident.id)}
-          className="py-1.5 px-2 rounded-lg font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-calm text-center shadow-xs"
+          disabled={!canRequestDispatch}
+          className="py-1.5 px-2 rounded-lg font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-calm text-center shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           title="Dispatch help"
         >
-          Dispatch
+          Request Dispatch
         </button>
       </div>
 

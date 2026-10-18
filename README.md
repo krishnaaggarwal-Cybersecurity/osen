@@ -31,6 +31,8 @@ The single greatest bottleneck determining survival is the **loss of the critica
 
 > **NetraGridAI closes the loop.** It turns computer vision into real-world emergency action by pairing real-time video detection with a human-in-the-loop 15-second verification modal, falling back to an autonomous bilingual (Hindi/English) telephony dispatch to 112 emergency services and 108 CATS ambulances.
 
+> **Repository status:** This repository currently contains the Next.js operator-console prototype, Supabase-backed operator sessions/configuration/incident records, and sample incident presets. The Python vision service, live WebSocket alerts, scheduled escalation worker, Twilio integration, and real emergency dispatch are not included or connected yet.
+
 ---
 
 ## 💡 The Solution & Core Value
@@ -161,34 +163,24 @@ The NetraGridAI portal provides a dedicated operator console built for long shif
 
 ## 🎬 Stage Demo Stunt Guide
 
-NetraGridAI features a built-in **Deterministic Stage Demo Console** (`/demo`) to execute a flawless live pitch without relying on unpredictable network streams:
+NetraGridAI includes a **Stage Demo Console** (`/demo`) that creates sample incidents from bundled camera presets:
 
-1. **Sign In:** Go to `/login` and enter operator credentials:
-   * **Username:** `OP112`
-   * **Password:** `12345`
-2. **Access Demo Console:** Navigate to `/demo` via the sidebar.
-3. **Set Judge / Presenter Phone:** Enter the destination mobile number in the E.164 field (e.g. `+91 98XXXXXXXX`).
-   * *Note:* The system automatically masks the number on the projector (`+91 98XXXXXX10`) for privacy.
-4. **Select Clip:** Pick an accident preset (e.g., *NH-48 Gurugram Express Corridor - Two-Wheeler Fall*).
-5. **Trigger Collision:** Click **Trigger Stage Collision**.
-   * The live MJPEG stream immediately flags the accident with bounding boxes.
-   * An emergency audible alarm sounds.
-   * The **15-Second Escalation Modal** pops up with the countdown ring.
-6. **Execute Stage Stunt (Do Not Acknowledge):**
-   * Step away from the keyboard and let the 15-second timer run down to zero.
-   * At `0s`, NetraGridAI triggers the autonomous telephony fallback.
-   * The live call state transitions (`Queued` ➔ `Ringing` ➔ `Answered`).
-   * The judge's phone rings on stage with the automated bilingual Hindi/English dispatch call!
-7. **Download Incident Brief:** Navigate to `/incidents` and download the generated 1-page forensic PDF.
+1. **Create an Account:** Use **Sign up** on `/login` with your name, email, and password. Confirm the email if confirmation is enabled.
+2. **Request Operator Access:** New accounts have the `pending` role. An administrator must grant `operator`, `supervisor`, or `admin` before sign-in can access the console.
+3. **Access Demo Console:** Navigate to `/demo` via the sidebar.
+4. **Trigger an Incident:** Click **Trigger Collision Alert Now**. The server stores the sample incident in Supabase and sets its response deadline from the persisted dispatch configuration.
+5. **Review the Incident:** A countdown is shown from the database deadline. Acknowledge, dismiss, or record a dispatch request before expiry.
+
+> Demo incidents use bundled sample evidence. Expiry records an `AUTO-ESCALATED` state using a database-checked deadline; this repository does **not** yet run a background dispatch worker or place live Twilio/112 calls.
 
 ---
 
 ## 🚀 Quickstart Guide
 
 ### Prerequisites
-* **Node.js** (v18.0.0 or later, recommended v20+)
+* **Node.js** (v20.9.0 or later)
 * **npm** or **pnpm**
-* *(Optional for Telephony)* A **Twilio** Account SID & Auth Token with a verified caller ID.
+* A Supabase project with the SQL migration applied.
 
 ### 1. Clone & Install Dependencies
 
@@ -203,20 +195,24 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Create a `.env.local` file in the project root:
+Create a `.env.local` file in the project root with the project URL and publishable key from Supabase:
 
 ```env
-# Twilio Telephony Credentials (Optional for local simulated voice)
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-TWILIO_FROM_NUMBER=+1234567890
-DEMO_DEFAULT_NUMBER=+919876543210
-
-# Escalation Configuration
-NEXT_PUBLIC_ESCALATION_SECONDS=15
-NEXT_PUBLIC_CONFIDENCE_THRESHOLD=0.85
-NEXT_PUBLIC_DEFAULT_SECTOR="Sector 4 - Gurugram Express Corridor (NH-48)"
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 ```
+
+Apply `supabase/migrations/20261018000000_operator_auth_and_incidents.sql` in the Supabase SQL Editor. Enable email sign-ups in Supabase Auth to use the in-app registration form and configure the allowed redirect URLs/email confirmation policy in the Supabase dashboard. New accounts receive a `pending` profile and cannot access incidents until an administrator approves them.
+
+Promote the first supervisor/admin from the SQL Editor (replace the email and sector):
+
+```sql
+update public.profiles
+set role = 'admin', assigned_sector = 'Sector 4 - Gurugram Express Corridor (NH-48)'
+where id = (select id from auth.users where email = 'admin@example.com');
+```
+
+The same statement can assign `operator` or `supervisor` roles. The account email address must be confirmed when confirmation is enabled. Sessions are stored in an HTTP-only, secure-in-production cookie and refreshed through Supabase Auth. The browser never receives a service-role key.
 
 ### 3. Run the Development Server
 
@@ -235,41 +231,24 @@ npm start
 
 ---
 
-## 📡 Backend API & WebSocket Contract
+## 🔐 Supabase-Backed Operator APIs
 
-The frontend interfaces with the backend via REST endpoints and real-time WebSockets:
+The current Next.js API routes use Supabase Auth and the authenticated user's JWT for database access. The SQL migration creates the `profiles`, `dispatch_config`, and `incidents` tables, enables row-level security, and exposes database functions for incident creation and state transitions. `PATCH /api/incidents/:id` is serialized in Postgres; repeating the same action returns the existing state, and every action is checked against the persisted deadline.
 
-### REST Endpoints
+The dashboard polls persisted incidents while open and submits an escalation transition after the displayed deadline. The database validates the deadline, but a scheduled worker is still required to perform escalation while no operator browser is connected. There is no connected voice provider, so `AUTO-ESCALATED` and `DISPATCHED` are stored workflow states—not confirmation that an emergency call was placed.
+
+## 📡 Current API Routes
+
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
-| `/api/video_feed` | `GET` | Multipart MJPEG stream (`multipart/x-mixed-replace; boundary=frame`) with spatial annotations. |
-| `/api/incidents` | `GET` | List all tracked incidents (supports `?status=` and `?severity=` filters). |
-| `/api/incidents/:id` | `GET` | Detailed incident record including timeline and bounding box metadata. |
-| `/api/incidents/:id/ack` | `POST` | Operator acknowledges or dispatches, immediately cancelling automated escalation. |
-| `/api/incidents/:id/report` | `GET` | Downloads the generated 1-page ReportLab PDF incident brief. |
-| `/api/demo/trigger` | `POST` | Forces a deterministic collision event on the active video clip. |
-| `/api/dispatch/config` | `GET / PUT` | Read or update escalation timer, language preferences, and emergency numbers. |
-| `/api/health` | `GET` | Health status of vision inference, video engine, and telephony trunks. |
+| `/api/auth` | `GET / POST / DELETE` | Restore, sign in, register, and sign out a Supabase Auth session. |
+| `/api/config` | `GET / PUT` | Read persisted dispatch configuration; supervisor/admin only may update it. |
+| `/api/incidents` | `GET / POST` | List incidents or create a sample incident with a deadline generated by the database. |
+| `/api/incidents/:id` | `PATCH` | Idempotent acknowledge, dismiss, dispatch-request, or due-escalation transition. |
+| `/api/cctv` | `GET` | List local sample CCTV files. |
+| `/api/video` | `GET` | List bundled demo clips. |
 
-### WebSocket Protocol (`/ws/alerts`)
-On connection, the WebSocket sends the current state snapshot and broadcasts structured events:
-
-```json
-{
-  "event": "incident.created",
-  "data": {
-    "id": "INC-0042",
-    "cameraId": "CAM-01",
-    "location": "NH-48 Km 112, Gurugram Express Corridor",
-    "coordinates": { "lat": 28.4595, "lng": 77.0266 },
-    "severity": "CRITICAL",
-    "confidence": 0.91,
-    "vehicleType": "Motorcycle / Rider",
-    "deadlineTs": 1729188000000,
-    "remainingSeconds": 15
-  }
-}
-```
+Live inference, MJPEG streaming, `/ws/alerts`, health telemetry, background escalation, PDF generation, and telephony routes are not implemented in this repository.
 
 ---
 

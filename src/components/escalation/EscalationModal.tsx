@@ -11,7 +11,6 @@ export const EscalationModal: React.FC = () => {
     acknowledgeIncident,
     dispatchIncident,
     maskedPhone,
-    callState,
     systemConfig,
   } = useApp();
 
@@ -21,10 +20,10 @@ export const EscalationModal: React.FC = () => {
 
   const inc = activeEscalationIncident;
   const remaining = Math.max(0, inc.remainingSeconds);
+  const isPending = inc.status === 'AWAITING' || inc.status === 'DETECTED';
+  const canRequestDispatch = isPending || inc.status === 'AUTO-ESCALATED';
 
-  // Item 3: After the failsafe timer ends (remaining === 0) or call is active/dispatched,
-  // automatically show the Twilio call interface!
-  const isAwaiting = (inc.status === 'AWAITING' || inc.status === 'DETECTED') && remaining > 0 && callState === 'idle';
+  const isAwaiting = isPending && remaining > 0;
 
   // Compact circular progress calculation
   const radius = 24;
@@ -52,7 +51,7 @@ export const EscalationModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-[10px] font-mono text-slate-400 leading-tight">
-                Surveillance Grid &bull; YOLOv8 Collision Verification
+                Sample incident preset &bull; Manual operator review
               </p>
             </div>
           </div>
@@ -91,7 +90,7 @@ export const EscalationModal: React.FC = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                   <span className="font-bold text-white">{inc.cameraId}</span>
                   <span className="text-slate-400">|</span>
-                  <span>CV BOUNDING BOX VERIFIED</span>
+                  <span>SAMPLE EVIDENCE PREVIEW</span>
                 </div>
 
                 <div className="absolute bottom-2 right-2 bg-slate-900/90 backdrop-blur-sm font-mono text-[9px] text-slate-300 px-2 py-0.5 rounded border border-slate-700 shadow">
@@ -142,7 +141,7 @@ export const EscalationModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Item 3: Auto-Escalation Timer OR Twilio Call Interface */}
+          {/* Server-verified deadline and incident status */}
           {isAwaiting ? (
             <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 gap-4">
               <div className="flex items-center space-x-3.5">
@@ -184,15 +183,15 @@ export const EscalationModal: React.FC = () => {
                     Auto-Escalation Failsafe Timer
                   </h3>
                   <p className="text-[11px] text-slate-600 max-w-md">
-                    If no action is taken within <span className="font-mono text-[#0B7FF5] font-bold">{remaining} seconds</span>, NetraGridAI automatically triggers an urgent bilingual dispatch call.
+                    If no action is taken within <span className="font-mono text-[#0B7FF5] font-bold">{remaining} seconds</span>, the server records the incident as auto-escalated.
                   </p>
                 </div>
               </div>
 
               <div className="hidden sm:block text-right bg-white px-3 py-2 rounded-lg border border-slate-200 shrink-0 font-mono text-xs">
-                <div className="text-slate-400 text-[9px] font-bold uppercase">Automated Telephony Target</div>
+                <div className="text-slate-400 text-[9px] font-bold uppercase">Configured Responder Number</div>
                 <div className="font-bold text-[#0B7FF5] text-xs">{maskedPhone}</div>
-                <div className="text-[9px] text-slate-500">112 ERSS & 108 Emergency Control</div>
+                <div className="text-[9px] text-slate-500">Configured target only; not connected</div>
               </div>
             </div>
           ) : (
@@ -201,7 +200,7 @@ export const EscalationModal: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <Radio className="w-4 h-4 text-[#0B7FF5] animate-pulse" />
                   <span className="font-mono text-xs font-bold text-slate-900 uppercase">
-                    Twilio Automated Voice Call Status
+                    Escalation & Dispatch Status
                   </span>
                   {inc.status === 'AUTO-ESCALATED' && (
                     <span className="bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-mono px-1.5 py-0.5 rounded font-bold">
@@ -214,20 +213,11 @@ export const EscalationModal: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
-                <div className={`p-2 rounded-lg border transition-calm ${callState === 'queued' ? 'bg-[#0B7FF5] text-white font-bold shadow' : 'bg-white border-slate-200 text-slate-600'}`}>
-                  1. Queued
-                </div>
-                <div className={`p-2 rounded-lg border transition-calm ${callState === 'ringing' ? 'bg-[#0B7FF5] text-white font-bold shadow' : 'bg-white border-slate-200 text-slate-600'}`}>
-                  2. Ringing
-                </div>
-                <div className={`p-2 rounded-lg border transition-calm ${callState === 'answered' ? 'bg-[#0B7FF5] text-white font-bold shadow' : 'bg-white border-slate-200 text-slate-600'}`}>
-                  3. Answered
-                </div>
-                <div className={`p-2 rounded-lg border transition-calm ${callState === 'completed' ? 'bg-emerald-600 text-white font-bold shadow' : 'bg-white border-slate-200 text-slate-600'}`}>
-                  4. Completed
-                </div>
-              </div>
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                {inc.status === 'AUTO-ESCALATED'
+                  ? 'The deadline was verified and recorded in Supabase. No phone call is placed until a dispatch provider is integrated.'
+                  : 'Dispatch actions are recorded in Supabase; live emergency-service calls are not configured.'}
+              </p>
             </div>
           )}
 
@@ -236,6 +226,7 @@ export const EscalationModal: React.FC = () => {
             {/* Button 3a: Dismiss */}
             <button
               onClick={() => dismissIncident(inc.id)}
+              disabled={!isPending}
               className="py-2.5 sm:py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition-calm flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
               title="The AI false flagged and no accident occurred visibly"
             >
@@ -246,7 +237,7 @@ export const EscalationModal: React.FC = () => {
             {/* Button 3b: Acknowledge */}
             <button
               onClick={() => acknowledgeIncident(inc.id)}
-              disabled={inc.status === 'ACKNOWLEDGED'}
+              disabled={!isPending}
               className={`py-2.5 sm:py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider transition-calm flex items-center justify-center space-x-1.5 cursor-pointer ${
                 inc.status === 'ACKNOWLEDGED'
                   ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
@@ -261,11 +252,12 @@ export const EscalationModal: React.FC = () => {
             {/* Button 3c: Dispatch Help */}
             <button
               onClick={() => dispatchIncident(inc.id, '112 ERSS & 108 CATS')}
+              disabled={!canRequestDispatch}
               className="py-2.5 sm:py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white transition-calm flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/25 cursor-pointer"
-              title="Dispatch emergency ambulance and first responders immediately"
+              title="Record a dispatch request; this does not place a call"
             >
               <PhoneCall className="w-4 h-4" />
-              <span>DISPATCH HELP</span>
+              <span>REQUEST DISPATCH</span>
             </button>
           </div>
         </div>

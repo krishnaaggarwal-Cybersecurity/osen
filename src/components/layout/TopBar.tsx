@@ -35,7 +35,7 @@ export const TopBar: React.FC = () => {
               ? 'bg-slate-100 border-slate-200 text-slate-500'
               : 'bg-blue-50 border-blue-200 text-[#0B7FF5]'
           }`}
-          title={isAudioMuted ? 'Unmute Audio Voice Dispatch' : 'Mute Audio Voice Dispatch'}
+          title={isAudioMuted ? 'Unmute alert audio' : 'Mute alert audio'}
         >
           {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           <span className="text-[11px] font-mono hidden lg:inline">{isAudioMuted ? 'Muted' : 'Audio On'}</span>

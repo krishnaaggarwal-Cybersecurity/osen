@@ -65,7 +65,7 @@ export const DashboardPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-red-700 mt-0.5 font-sans">
-                {awaitingIncidents[0].location} &bull; Auto-dispatch voice call in{' '}
+                {awaitingIncidents[0].location} &bull; Escalation deadline in{' '}
                 <span className="font-mono text-red-900 font-bold">
                   {awaitingIncidents[0].remainingSeconds} seconds
                 </span>
@@ -140,7 +140,7 @@ export const DashboardPage: React.FC = () => {
                     No active collision incidents
                   </div>
                   <p className="text-[11px] text-slate-500 font-sans max-w-xs mx-auto">
-                    Continuous AI surveillance scanning active. Automated collision alerts trigger at 45s, 1m, and 1m 30s intervals.
+                    No incidents are recorded. Use the demo console to create a sample incident; live vision inference is not connected in this repository.
                   </p>
                 </div>
               ) : (

@@ -4,22 +4,43 @@ import { useApp } from '../context/AppContext';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useApp();
-  const [loginID, setLoginID] = useState<string>('OP112');
-  const [password, setPassword] = useState<string>('12345');
+  const { login, signUp } = useApp();
+  const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up'>('sign-in');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Requirement A.12: Page title formula
   useEffect(() => {
-    document.title = 'Login | NetraGridAI';
-  }, []);
+    document.title = `${authMode === 'sign-in' ? 'Sign in' : 'Sign up'} | NetraGridAI`;
+  }, [authMode]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(loginID, password)) {
-      navigate('/dashboard');
-    } else {
-      setError('Invalid operator credentials. Use USERNAME: OP112 | PASSWORD: 12345');
+    setError('');
+    setSuccess('');
+    setIsSubmitting(true);
+    try {
+      if (authMode === 'sign-up') {
+        const result = await signUp(displayName, email, password);
+        if (result.success) {
+          setSuccess(result.message || 'Account created. Check your email for next steps.');
+          setAuthMode('sign-in');
+          setPassword('');
+        } else {
+          setError(result.error || 'Could not create your account.');
+        }
+      } else {
+        if (await login(email, password)) {
+          navigate('/dashboard');
+        } else {
+          setError('Sign-in failed. Check your email and password, and confirm an administrator has approved your account.');
+        }
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -62,12 +83,21 @@ export const LoginPage: React.FC = () => {
       <div className="w-full md:w-1/2 p-8 lg:p-16 flex flex-col justify-between bg-white text-slate-900">
         <div className="max-w-md w-full mx-auto my-auto space-y-8">
           
-          {/* Header: LOGIN in caps without logo (Item 8) */}
+          {/* Authentication header */}
           <div className="space-y-2">
             <h2 className="font-sans text-4xl lg:text-5xl font-bold tracking-tight text-[#0B7FF5] uppercase">
-              LOGIN
+              {authMode === 'sign-in' ? 'SIGN IN' : 'SIGN UP'}
             </h2>
+            <p className="text-sm text-slate-500">
+              {authMode === 'sign-in' ? 'Sign in to your operator account.' : 'Create an account to request operator access.'}
+            </p>
           </div>
+
+          {success && (
+            <div role="status" className="p-3.5 bg-emerald-50 border-l-4 border-emerald-500 text-xs text-emerald-800 font-mono rounded-r-md">
+              {success}
+            </div>
+          )}
 
           {error && (
             <div className="p-3.5 bg-red-50 border-l-4 border-red-500 text-xs text-red-700 font-mono rounded-r-md">
@@ -77,18 +107,42 @@ export const LoginPage: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Field 1: Login ID (Functional 2) */}
+            {authMode === 'sign-up' && (
+              <div className="space-y-1.5">
+                <label htmlFor="display-name" className="text-xs font-semibold text-slate-700 font-mono uppercase">
+                  Full Name
+                </label>
+                <div className="relative flex items-center bg-slate-50 rounded-lg overflow-hidden border border-slate-200 focus-within:border-[#0B7FF5] focus-within:ring-2 focus-within:ring-blue-100 transition-calm">
+                  <div className="w-1.5 h-11 bg-[#0B7FF5] shrink-0" />
+                  <input
+                    id="display-name"
+                    type="text"
+                    autoComplete="name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    minLength={2}
+                    maxLength={80}
+                    required
+                    className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 focus:outline-none font-mono placeholder-slate-400 font-medium"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 font-mono uppercase">
-                Operator Login ID
+              <label htmlFor="operator-email" className="text-xs font-semibold text-slate-700 font-mono uppercase">
+                Operator Email
               </label>
               <div className="relative flex items-center bg-slate-50 rounded-lg overflow-hidden border border-slate-200 focus-within:border-[#0B7FF5] focus-within:ring-2 focus-within:ring-blue-100 transition-calm">
                 <div className="w-1.5 h-11 bg-[#0B7FF5] shrink-0" />
                 <input
-                  type="text"
-                  value={loginID}
-                  onChange={(e) => setLoginID(e.target.value)}
-                  placeholder="OP112"
+                  id="operator-email"
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="operator@example.com"
                   required
                   className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 focus:outline-none font-mono placeholder-slate-400 font-medium"
                 />
@@ -97,48 +151,52 @@ export const LoginPage: React.FC = () => {
 
             {/* Field 2: Password (Functional 2) */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700 font-mono uppercase">
+              <label htmlFor="operator-password" className="text-xs font-semibold text-slate-700 font-mono uppercase">
                 Password
               </label>
               <div className="relative flex items-center bg-slate-50 rounded-lg overflow-hidden border border-slate-200 focus-within:border-[#0B7FF5] focus-within:ring-2 focus-within:ring-blue-100 transition-calm">
                 <div className="w-1.5 h-11 bg-[#0B7FF5] shrink-0" />
                 <input
+                  id="operator-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="12345"
+                  autoComplete={authMode === 'sign-in' ? 'current-password' : 'new-password'}
+                  placeholder="Enter your password"
+                  minLength={authMode === 'sign-up' ? 8 : undefined}
                   required
                   className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 focus:outline-none font-mono placeholder-slate-400 font-medium"
                 />
               </div>
             </div>
 
-            {/* Options line without "Already a member?" link (Requirement A.15) */}
-            <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
-              <label className="flex items-center space-x-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="rounded text-[#0B7FF5] focus:ring-0 accent-[#0B7FF5] w-4 h-4"
-                />
-                <span className="font-medium">Keep me signed in</span>
-              </label>
-            </div>
-
             {/* Primary Action Button */}
             <button
               type="submit"
-              className="w-full py-3.5 px-6 rounded-full bg-[#0B7FF5] text-white font-bold text-xs tracking-wider uppercase hover:bg-blue-600 active:scale-[0.99] transition-calm shadow-lg shadow-blue-500/25"
+              disabled={isSubmitting}
+              className="w-full py-3.5 px-6 rounded-full bg-[#0B7FF5] text-white font-bold text-xs tracking-wider uppercase hover:bg-blue-600 active:scale-[0.99] transition-calm shadow-lg shadow-blue-500/25 disabled:opacity-60"
             >
-              SIGN IN
+              {isSubmitting ? (authMode === 'sign-in' ? 'SIGNING IN...' : 'CREATING ACCOUNT...') : (authMode === 'sign-in' ? 'SIGN IN' : 'CREATE ACCOUNT')}
             </button>
           </form>
 
-          {/* Static Credentials Box: USERNAME: OP112 | PASSWORD: 12345 (Requirement A.14) */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center font-mono">
-            <span className="text-xs font-bold text-slate-700 tracking-wide">
-              USERNAME: OP112 | PASSWORD: 12345
-            </span>
+          <p className="text-center text-sm text-slate-600">
+            {authMode === 'sign-in' ? "Don't have an account?" : 'Already registered?'}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode(authMode === 'sign-in' ? 'sign-up' : 'sign-in');
+                setError('');
+                setSuccess('');
+              }}
+              className="font-semibold text-[#0B7FF5] hover:underline"
+            >
+              {authMode === 'sign-in' ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center font-mono text-xs text-slate-600">
+            New accounts require email confirmation and administrator approval before operator access is granted.
           </div>
 
         </div>
